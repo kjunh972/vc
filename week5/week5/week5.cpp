@@ -13,19 +13,19 @@ BOOL isMoving = FALSE; // 이동 모드 여부
 HBRUSH pBrush, wBrush; // 브러시 핸들
 
 // 이동을 위한 변수
-int setX, setY;
+int offsetX, offsetY;
 // 이전 사각형의 좌표를 저장하는 변수
-int startX, startY, endX, endY;
-
-void Initialize() { //초기화
+int prevStartX, prevStartY, prevEndX, prevEndY;
+// 초기화 함수
+void Initialize() {
 	isDrawing = FALSE;
 	isMoving = FALSE;
-	setX = 0;
-	setY = 0;
-	startX = 0;
-	startY = 0;
-	endX = 0;
-	endY = 0;
+	offsetX = 0;
+	offsetY = 0;
+	prevStartX = 0;
+	prevStartY = 0;
+	prevEndX = 0;
+	prevEndY = 0;
 }
 
 // 윈도우의 이벤트를 처리하는 콜백(Callback) 함수.
@@ -45,11 +45,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		startPos.y = HIWORD(lParam);
 		break;
 	case WM_RBUTTONDOWN: // 오른쪽 마우스 버튼을 눌렀을 때
-		if (LOWORD(lParam) >= startX && LOWORD(lParam) <= endX &&
-			HIWORD(lParam) >= startY && HIWORD(lParam) <= endY) {
+		if (LOWORD(lParam) >= prevStartX && LOWORD(lParam) <= prevEndX &&
+			HIWORD(lParam) >= prevStartY && HIWORD(lParam) <= prevEndY) {
 			isMoving = TRUE;
-			setX = LOWORD(lParam) - startX;
-			setY = HIWORD(lParam) - startY;
+			offsetX = LOWORD(lParam) - prevStartX;
+			offsetY = HIWORD(lParam) - prevStartY;
 		}
 		break;
 	case WM_RBUTTONUP:
@@ -68,7 +68,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			HDC hdc = GetDC(hwnd);
 			SelectObject(hdc, wBrush); // 화이트 브러시 선택
 			SetROP2(hdc, R2_WHITE);
-			Rectangle(hdc, startX, startY, endX, endY);
+			Rectangle(hdc, prevStartX, prevStartY, prevEndX, prevEndY);
 
 			// 새로운 사각형 그리기
 			SetROP2(hdc, R2_COPYPEN);
@@ -77,10 +77,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			ReleaseDC(hwnd, hdc);
 
 			// 현재 사각형의 좌표 저장
-			startX = startPos.x;
-			startY = startPos.y;
-			endX = endX;
-			endY = endY;
+			prevStartX = startPos.x;
+			prevStartY = startPos.y;
+			prevEndX = endX;
+			prevEndY = endY;
 		}
 		break;
 	case WM_MOUSEMOVE:
@@ -100,29 +100,29 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			ReleaseDC(hwnd, hdc);
 		}
 		else if (isMoving && (wParam & MK_RBUTTON)) {
-			int newX = LOWORD(lParam) - setX;
-			int newY = HIWORD(lParam) - setY;
-			int area = endX - startX;
-			int high = endY - startY;
+			int newX = LOWORD(lParam) - offsetX;
+			int newY = HIWORD(lParam) - offsetY;
+			int width = prevEndX - prevStartX;
+			int height = prevEndY - prevStartY;
 
 
 			// 이전 사각형 삭제
 			HDC hdc = GetDC(hwnd);
 			SelectObject(hdc, wBrush); // 하얀색 브러시 선택
 			SetROP2(hdc, R2_WHITE);
-			Rectangle(hdc, startX, startY, endX, endY);
+			Rectangle(hdc, prevStartX, prevStartY, prevEndX, prevEndY);
 
 			// 이동한 사각형 그리기
 			SetROP2(hdc, R2_COPYPEN);
 			SelectObject(hdc, pBrush); // 분홍색 브러시 선택
-			Rectangle(hdc, newX, newY, newX + area, newY + high);
+			Rectangle(hdc, newX, newY, newX + width, newY + height);
 			ReleaseDC(hwnd, hdc);
 
 			// 현재 사각형의 좌표 저장
-			startX = newX;
-			startY = newY;
-			endX = newX + area;
-			endY = newY + high;
+			prevStartX = newX;
+			prevStartY = newY;
+			prevEndX = newX + width;
+			prevEndY = newY + height;
 
 		}
 		break;
