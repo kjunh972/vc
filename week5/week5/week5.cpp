@@ -6,12 +6,12 @@
 
 #include <windows.h>
 
-// 그림 그리기 시작점
+// 그림 그리기 시작점.
 POINT startPoint;
-BOOL isDrawing = FALSE; // 그림 그리기 모드인지 여부
-BOOL isMoving = FALSE;  // 그림 이동 모드인지 여부
-HWND hwnd;              // 윈도우 핸들
-HBRUSH blueBrush, whiteBrush; // 파란색과 흰색 브러시
+BOOL isDrawing = FALSE; // 그림 그리기 모드인지 여부.
+BOOL isMoving = FALSE;  // 그림 이동 모드인지 여부.
+HWND hwnd;              // 윈도우 핸들.
+HBRUSH blueBrush, whiteBrush; // 파란색과 흰색 브러시.
 
 int moveOffsetX, moveOffsetY;  // 그림 이동 시 시작점과 마우스 포인터의 차이
 int lastDrawStartX, lastDrawStartY, lastDrawEndX, lastDrawEndY; // 마지막으로 그린 사각형의 좌표
