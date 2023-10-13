@@ -1,25 +1,18 @@
 #include <windows.h>
 
-// 윈도우 애플리케이션에 필요한 변수와 구조체 선언
+POINT startPoint = { 0 };  // 마우스 이벤트에서 사용할 시작 지점
+POINT endPoint = { 0 };    // 마우스 이벤트에서 사용할 끝 지점
+int isKeyPressed = 0;      // 키보드 입력 상태를 저장하는 변수
+RECT rect_user = { 5, 5, 10, 10 };     // 파란색 상자의 위치와 크기를 저장하는 RECT 구조체
+RECT rect_target = { 50, 50, 150, 150 }; // 핑크색 상자의 위치와 크기를 저장하는 RECT 구조체
+RECT outputRect;            // 교차 부분을 저장하기 위한 RECT 구조체
 
-// 마우스 포인터의 시작점과 끝점을 저장하기 위한 구조체
-POINT startPoint = { 0 };
-POINT endPoint = { 0 };
+// 새로운 변수 추가: 상자 이동에 사용할 값
+int moveX = 0;  // 가로로 상자를 이동하는 값
+int moveY = 0;  // 세로로 상자를 이동하는 값
 
-// 키보드 입력 상태를 저장하는 변수
-int isKeyPressed = 0;
-
-// 파란색 상자와 핑크색 상자의 위치 및 크기를 저장하는 RECT 구조체
-RECT rect_user = { 5, 5, 10, 10 };
-RECT rect_target = { 50, 50, 150, 150 };
-
-// 교차 부분을 저장하기 위한 RECT 구조체
-RECT outputRect;
-
-// 윈도우 프로시저 (메시지 처리 함수) 선언
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-// 메인 함수
 #ifdef UNICODE
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nShowCmd)
 #else
@@ -31,12 +24,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     ZeroMemory(&wc, sizeof(wc));
 
     wc.hInstance = hInstance;
-    wc.lpszClassName = TEXT("Computer Software"); // 윈도우 클래스 이름
-    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION); // 아이콘
-    wc.hCursor = LoadCursor(NULL, IDC_CROSS); // 커서 모양
+    wc.lpszClassName = TEXT("Computer Software");  // 윈도우 클래스 이름
+    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);     // 아이콘
+    wc.hCursor = LoadCursor(NULL, IDC_CROSS);       // 커서 모양
     wc.style = CS_HREDRAW | CS_VREDRAW;
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1); // 배경 색상
-    wc.lpfnWndProc = WindowProc; // 윈도우 프로시저 함수
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);  // 배경 색상
+    wc.lpfnWndProc = WindowProc;                    // 윈도우 프로시저 함수
 
     if (RegisterClass(&wc) == 0)
     {
@@ -52,7 +45,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     HWND hwnd = CreateWindow(
         wc.lpszClassName,
         TEXT("202007024 김준형"), // 윈도우 타이틀
-        WS_OVERLAPPEDWINDOW, // 윈도우 스타일
+        WS_OVERLAPPEDWINDOW,       // 윈도우 스타일
         0, 0,
         width, height,
         NULL, NULL,
@@ -72,6 +65,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
 
+    // 새로운 타이머 추가: SetTimer를 호출하여 10밀리초마다 WM_TIMER 메시지를 보냄
+    SetTimer(hwnd, 1, 10, NULL);
+
     while (msg.message != WM_QUIT)
     {
         if (GetMessage(&msg, NULL, 0, 0))
@@ -81,18 +77,20 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         }
     }
 
+    // 타이머 해제
+    KillTimer(hwnd, 1);
+
     UnregisterClass(wc.lpszClassName, wc.hInstance);
 
     return (int)msg.wParam;
 }
 
-// 윈도우 프로시저 (메시지 처리 함수) 구현
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    HDC hdc = GetDC(hwnd); // 윈도우의 그래픽 컨텍스트 핸들을 얻어옴
+    HDC hdc = GetDC(hwnd);  // 윈도우의 그래픽 컨텍스트 핸들을 얻어옴
 
     // 브러시 생성 (색상 설정)
-    HBRUSH hBrush_user = CreateSolidBrush(RGB(0, 0, 255)); // 파란색 브러시
+    HBRUSH hBrush_user = CreateSolidBrush(RGB(0, 0, 255));     // 파란색 브러시
     HBRUSH hBrush_target = CreateSolidBrush(RGB(255, 0, 255)); // 핑크색 브러시
     HBRUSH hBrush_eraser = CreateSolidBrush(RGB(255, 255, 255)); // 흰색 브러시
 
@@ -105,36 +103,38 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     break;
 
-    case WM_KEYDOWN: //방향키가 눌렸을때 파란색 박스 이동
+    case WM_KEYDOWN: // 방향키가 눌렸을 때 파란색 상자 이동
         isKeyPressed = 1;
         if (wParam == VK_RIGHT)
         {
-            rect_user.left += 2;
-            rect_user.right += 2;
-            InvalidateRect(hwnd, NULL, TRUE);
+            moveX = 1; // 오른쪽으로 이동
         }
         else if (wParam == VK_LEFT)
         {
-            rect_user.left -= 2;
-            rect_user.right -= 2;
-            InvalidateRect(hwnd, NULL, TRUE);
+            moveX = -1; // 왼쪽으로 이동
         }
         else if (wParam == VK_UP)
         {
-            rect_user.top -= 2;
-            rect_user.bottom -= 2;
-            InvalidateRect(hwnd, NULL, TRUE);
+            moveY = -1; // 위로 이동
         }
         else if (wParam == VK_DOWN)
         {
-            rect_user.top += 2;
-            rect_user.bottom += 2;
-            InvalidateRect(hwnd, NULL, TRUE);
+            moveY = 1; // 아래로 이동
         }
         break;
 
     case WM_KEYUP:
         isKeyPressed = 1;
+        moveX = 0; // 이동 멈춤
+        moveY = 0; // 이동 멈춤
+        break;
+
+    case WM_TIMER: // 타이머 메시지 처리
+        // 이동 값을 적용하여 상자 위치를 업데이트
+        rect_user.left += moveX;
+        rect_user.right += moveX;
+        rect_user.top += moveY;
+        rect_user.bottom += moveY;
         InvalidateRect(hwnd, NULL, TRUE);
         break;
 
@@ -150,7 +150,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             FillRect(hdc, &rect_user, hBrush_user);
         }
 
-        // 파란색 상자 (rect_user)가 핑크색 상자 (rect_target)와 교차하는지 확인합니다.
+        // 파란색 상자 (rect_user)가 핑크색 상자 (rect_target)와 교차하는지 확인
         if (IntersectRect(&outputRect, &rect_user, &rect_target))
         {
             SetTextColor(hdc, RGB(80, 80, 80));
@@ -171,13 +171,14 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         break;
 
     default:
-        return DefWindowProc(hwnd, uMsg, wParam, lParam); // 처리하지 않는 메시지는 기본 처리
+        return DefWindowProc(hwnd, uMsg, wParam, lParam); // 기본 윈도우 프로시저 호출
     }
 
-    DeleteObject(hBrush_user); // 생성한 브러시 해제
+    // 브러시 및 그래픽 컨텍스트 해제
+    DeleteObject(hBrush_user);
     DeleteObject(hBrush_target);
     DeleteObject(hBrush_eraser);
-    ReleaseDC(hwnd, hdc); // 그래픽 컨텍스트 해제
+    ReleaseDC(hwnd, hdc);
 
     return 0;
 }
