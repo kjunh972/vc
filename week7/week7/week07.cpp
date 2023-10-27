@@ -18,9 +18,6 @@ POINT endPoint;   // 드래그 끝 지점
 POINT centerPoint; // 원의 중심
 int radius;        // 원의 반지름
 
-int selectedShapeIndex = -1; // 선택된 도형의 인덱스를 저장
-POINT dragOffset; // 이동 중에 마우스 포인터와 도형 중심 간의 오프셋
-
 void Draw3DBox(HDC hdc, int left, int top, int right, int bottom) {
     // 그림자 그리기
     HBRUSH shadowBrush = CreateSolidBrush(RGB(192, 192, 192));
@@ -214,18 +211,6 @@ void StopDrawingCircle() {
     InvalidateRect(NULL, NULL, FALSE);
 }
 
-// 선택된 도형을 이동시키는 함수
-void MoveSelectedShape(int dx, int dy) {
-    if (selectedShapeIndex != -1) {
-        RECT& rect = shapes[selectedShapeIndex].rect;
-        rect.left += dx;
-        rect.top += dy;
-        rect.right += dx;
-        rect.bottom += dy;
-        InvalidateRect(NULL, NULL, FALSE);
-    }
-}
-
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
     case WM_LBUTTONDOWN:
@@ -244,29 +229,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             StopDrawing();
         }
         break;
-   case WM_RBUTTONDOWN:
-    if (currentShapeType != 3) {
-        for (size_t i = 0; i < shapes.size(); i++) {
-            if (LOWORD(lParam) >= shapes[i].rect.left && LOWORD(lParam) <= shapes[i].rect.right &&
-                HIWORD(lParam) >= shapes[i].rect.top && HIWORD(lParam) <= shapes[i].rect.bottom) {
-                selectedShapeIndex = i; // 해당 위치에 있는 도형 선택
-                // 마우스 이동 이벤트를 위한 시작점 설정
-                dragOffset.x = LOWORD(lParam) - shapes[i].rect.left;
-                dragOffset.y = HIWORD(lParam) - shapes[i].rect.top;
-                SetCapture(hWnd); // 마우스 이벤트를 윈도우로 전달하기 위해 캡처 설정
-                break;
-            }
-        }
-    }
-    break;
-    case WM_RBUTTONUP:
-        if (selectedShapeIndex != -1) {
-            ReleaseCapture(); // 캡처 해제
-            selectedShapeIndex = -1; // 선택 해제
-        }
-        break;
     case WM_MOUSEMOVE:
-        if (wParam & MK_LBUTTON) {
+        if (wParam & MK_LBUTTON) { // 마우스 왼쪽 버튼이 눌린 상태에서만 업데이트
             if (currentShapeType == 3) { // 원 그리기 모드일 때
                 UpdateDrawingCircle(LOWORD(lParam), HIWORD(lParam));
             }
@@ -274,35 +238,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 UpdateDrawing(LOWORD(lParam), HIWORD(lParam));
             }
         }
-        if (wParam & MK_RBUTTON) {
-            if (selectedShapeIndex != -1) {
-                // 마우스 오른쪽 버튼을 누르면 도형 이동
-                int x = LOWORD(lParam) - dragOffset.x;
-                int y = HIWORD(lParam) - dragOffset.y;
-                MoveSelectedShape(x - shapes[selectedShapeIndex].rect.left, y - shapes[selectedShapeIndex].rect.top);
-            }
-        }
         break;
-
-    case WM_CREATE: {
-        // "사각형" 버튼 생성
-        CreateWindow(_T("BUTTON"), _T("사각형"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 20, 20, 100, 40, hWnd, (HMENU)1, NULL, NULL);
-
-        // "삼각형" 버튼 생성
-        CreateWindow(_T("BUTTON"), _T("삼각형"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 130, 20, 100, 40, hWnd, (HMENU)2, NULL, NULL);
-
-        // "정육면체" 버튼 생성
-        CreateWindow(_T("BUTTON"), _T("정육면체"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 240, 20, 120, 40, hWnd, (HMENU)3, NULL, NULL);
-
-        // "원" 버튼 생성
-        CreateWindow(_T("BUTTON"), _T("원"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 370, 20, 100, 40, hWnd, (HMENU)4, NULL, NULL);
-
-        // "별" 버튼 생성
-        CreateWindow(_T("BUTTON"), _T("별"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 480, 20, 100, 40, hWnd, (HMENU)5, NULL, NULL);
-
-        // "지우개" 버튼 생성
-        CreateWindow(_T("BUTTON"), _T("지우개"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 590, 20, 100, 40, hWnd, (HMENU)6, NULL, NULL);
-
+    case WM_PAINT: {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hWnd, &ps);
+        DrawShapes(hWnd, hdc);
+        EndPaint(hWnd, &ps);
         break;
     }
     case WM_COMMAND:
@@ -322,17 +263,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         case 5: // "별" 버튼을 눌렀을 때
             currentShapeType = 4;
             break;
-        case 6: // "지우개" 버튼을 눌렀을 때
-            shapes.clear(); // 모든 도형을 지웁니다.
-            InvalidateRect(NULL, NULL, FALSE);
-            break;
         }
         break;
-    case WM_PAINT: {
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hWnd, &ps);
-        DrawShapes(hWnd, hdc);
-        EndPaint(hWnd, &ps);
+    case WM_CREATE: {
+        // "사각형" 버튼 생성
+        CreateWindow(_T("BUTTON"), _T("사각형"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 20, 20, 100, 40, hWnd, (HMENU)1, NULL, NULL);
+
+        // "삼각형" 버튼 생성
+        CreateWindow(_T("BUTTON"), _T("삼각형"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 130, 20, 100, 40, hWnd, (HMENU)2, NULL, NULL);
+
+        // "정육면체" 버튼 생성
+        CreateWindow(_T("BUTTON"), _T("정육면체"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 240, 20, 120, 40, hWnd, (HMENU)3, NULL, NULL);
+
+        // "원" 버튼 생성
+        CreateWindow(_T("BUTTON"), _T("원"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 370, 20, 100, 40, hWnd, (HMENU)4, NULL, NULL);
+
+        // "별" 버튼 생성
+        CreateWindow(_T("BUTTON"), _T("별"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 480, 20, 100, 40, hWnd, (HMENU)5, NULL, NULL);
         break;
     }
     case WM_DESTROY:
