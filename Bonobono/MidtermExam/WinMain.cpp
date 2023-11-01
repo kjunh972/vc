@@ -88,7 +88,7 @@ void DrawCircle(HDC hdc, int centerX, int centerY, int radius) {
 
 void DrawBonobono(HWND hWnd, HDC hdc, int x, int y) {
     // 이 함수 내에서 hdc를 사용하여 그림을 그립니다.
-    int radius = 30;
+    int radius = 120;  // 전체 얼굴 크기를 4배로 확대
 
     // 화면 가로 중심과 세로 중심을 구합니다.
     RECT rect;
@@ -100,27 +100,47 @@ void DrawBonobono(HWND hWnd, HDC hdc, int x, int y) {
     x = centerX;
     y = centerY;
 
-    HBRUSH hBrush = CreateSolidBrush(RGB(80,188,223));
+    HBRUSH hBrush = CreateSolidBrush(RGB(80, 188, 223));
     SelectObject(hdc, hBrush);
     Ellipse(hdc, x - radius, y - radius, x + radius, y + radius);
 
-    // 보노보노의 얼굴 특징 그리기 (눈과 입)
+    // 보노보노의 얼굴 특징 그리기 (눈, 입, 코)
     // 눈 그리기
     HBRUSH eyeBrush = CreateSolidBrush(RGB(0, 0, 0));
     SelectObject(hdc, eyeBrush);
-    Ellipse(hdc, x - 10, y - 10, x - 5, y - 5);  // 왼쪽 눈
-    Ellipse(hdc, x + 5, y - 10, x + 10, y - 5);  // 오른쪽 눈
+    Ellipse(hdc, x - 84, y - 36, x - 100, y - 20);  // 왼쪽 눈 (왼쪽  x, 위쪽 y, 오른쪽 x, 아래쪽 y)
+    Ellipse(hdc, x + 84, y - 36, x + 100, y - 20);  // 오른쪽 눈
 
-    // 입 그리기 (웃는 입)
+    /*  선
     HPEN hPen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
     SelectObject(hdc, hPen);
     MoveToEx(hdc, x - 10, y + 10, NULL);
-    LineTo(hdc, x + 10, y + 10);
+    LineTo(hdc, x + 10, y + 10);*/
+
+    // 입
+    HBRUSH mouseBrush = CreateSolidBrush(RGB(255, 192, 203)); 
+    SelectObject(hdc, mouseBrush);
+    Ellipse(hdc, x+8 - 35, y+5, x + 28, y + 88);
+
+    // 하얀색 코
+    HBRUSH noseBrush2 = CreateSolidBrush(RGB(255, 255, 255)); // 하얀색 원
+    SelectObject(hdc, noseBrush2);
+    Ellipse(hdc, x -47, y , x + 3, y + 50); 
+    Ellipse(hdc, x , y, x + 50, y + 50);
+
+    // 코 
+    HBRUSH noseBrush = CreateSolidBrush(RGB(0, 0, 0));
+    SelectObject(hdc, noseBrush);
+    Ellipse(hdc, x - 15, y - 13, x + 15, y + 18); // 코의 위치만 수정
 
     DeleteObject(hBrush);
     DeleteObject(eyeBrush);
-    DeleteObject(hPen);
+    DeleteObject(mouseBrush);
+    DeleteObject(noseBrush2);
+    DeleteObject(noseBrush);
 }
+
+
 
 
 
