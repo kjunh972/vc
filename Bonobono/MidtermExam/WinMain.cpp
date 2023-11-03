@@ -1,19 +1,21 @@
-#include <windows.h>
+#include <windows.h> // Windows API 헤더 파일
 #include <vector>
-#include <tchar.h>
-#include <cmath>
+#include <tchar.h> // TCHAR와 관련된 헤더 파일
+#include <cmath> // 수학 함수 헤더 파일
 
+// 사용자 지정 도형 구조체
 struct CustomShape {
-    RECT rect;
-    bool isDrawing;
-    int shapeType; // 0: 사각형, 1: 삼각형, 2: 정육면체, 3: 원, 4: 별
+    RECT rect;      // 도형의 위치와 크기
+    bool isDrawing; // 현재 그리는 중인지 여부
+    int shapeType;  // 도형의 타입 (0: 사각형, 1: 원, 2: 보노보노, 3: 라이언, 4: 큐브)
 };
 
 int currentShapeType = 0; // 현재 그릴 도형 타입
+bool drawEyesAsLines = false; // 눈을 선으로 그릴지 여부
 
-std::vector<CustomShape> shapes; // 그린 도형을 저장한다. 예를 들어서 이를 통해 그린 도형을 
+std::vector<CustomShape> shapes; // 그린 도형을 저장할 벡터
 
-bool isBoxVisible = true; // 사각형이 보이는지 여부를 나타내는 플래그
+bool isBoxVisible = true; // 사각형이 보이는지 여부
 HWND hButtons[5]; // 5개의 버튼 윈도우 핸들을 저장하는 배열
 
 int innerBoxHeight = 338; // 내부 상자의 높이
@@ -73,6 +75,7 @@ void DrawBox(HWND hWnd, HDC hdc) {
     DeleteObject(hInnerBoxBrush);
 }
 
+// 원을 그리는 함수
 void DrawCircle(HDC hdc, int centerX, int centerY, int radius) {
     HBRUSH circleBrush = CreateSolidBrush(RGB(0, 255, 0)); // 녹색으로 내부 채우기
     SelectObject(hdc, circleBrush);
@@ -86,9 +89,32 @@ void DrawCircle(HDC hdc, int centerX, int centerY, int radius) {
     DeleteObject(hPen);
 }
 
+// 스페이스바 상태를 확인하여 눈을 그리는 함수
+void DrawEye(HWND hWnd, HDC hdc, int x, int y, bool drawAsLine) {
+    int eyeWidth = 32; // 눈의 너비
+    int eyeHeight = 10; // 눈의 높이
+
+    // 왼쪽 눈 그리기
+    int leftEyeX = x - 50;
+    int leftEyeY = y - 36;
+    if (drawAsLine) {
+        HPEN eyeBrush = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
+        SelectObject(hdc, eyeBrush);
+        MoveToEx(hdc, leftEyeX, leftEyeY, NULL);
+        LineTo(hdc, leftEyeX + eyeWidth, leftEyeY);
+        DeleteObject(eyeBrush);
+    }
+    else {
+        HBRUSH eyeBrush = CreateSolidBrush(RGB(0, 0, 0));
+        SelectObject(hdc, eyeBrush);
+        Ellipse(hdc, leftEyeX, leftEyeY, leftEyeX + eyeWidth, leftEyeY + eyeHeight);
+        DeleteObject(eyeBrush);
+    }
+}
+
+// 보노보노 그리는 함수
 void DrawBonobono(HWND hWnd, HDC hdc, int x, int y) {
-    // 이 함수 내에서 hdc를 사용하여 그림을 그립니다.
-    int radius = 120;  // 전체 얼굴 크기를 4배로 확대
+    int radius = 120;  // 전체 얼굴 크기
 
     // 화면 가로 중심과 세로 중심을 구합니다.
     RECT rect;
@@ -104,41 +130,123 @@ void DrawBonobono(HWND hWnd, HDC hdc, int x, int y) {
     SelectObject(hdc, hBrush);
     Ellipse(hdc, x - radius, y - radius, x + radius, y + radius);
 
-    // 보노보노의 얼굴 특징 그리기 (눈, 입, 코)
     // 눈 그리기
     HBRUSH eyeBrush = CreateSolidBrush(RGB(0, 0, 0));
     SelectObject(hdc, eyeBrush);
-    Ellipse(hdc, x - 84, y - 36, x - 100, y - 20);  // 왼쪽 눈 (왼쪽  x, 위쪽 y, 오른쪽 x, 아래쪽 y)
-    Ellipse(hdc, x + 84, y - 36, x + 100, y - 20);  // 오른쪽 눈
 
-    /*  선
-    HPEN hPen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
-    SelectObject(hdc, hPen);
-    MoveToEx(hdc, x - 10, y + 10, NULL);
-    LineTo(hdc, x + 10, y + 10);*/
+    // 스페이스바 상태에 따라 눈을 선 또는 원으로 그리기
+    if (drawEyesAsLines) {
+        HPEN eyePen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
+        SelectObject(hdc, eyePen);
+        int wklstartX = x - 50;
+        int wklendX = x + 50;
+        int wklstartY = y + 70;
+        int wklendY = y + 100;
+        // 첫번째 눈 선 
+        wklstartX -= 105; // 시작점 x 좌표 이동
+        wklstartY -= 127; // 시작점 y 좌표 이동
+        wklendX -= 135;   // 끝점 x 좌표 이동
+        wklendY -= 127;   // 끝점 y 좌표 이동
+        MoveToEx(hdc, wklstartX + 50, wklstartY + 20, NULL);
+        LineTo(hdc, wklendX, wklendY);
+        // 두번째  
+        wklstartX += 0;
+        wklstartY += 0;
+        wklendX += 0;
+        wklendY += 0;
+        MoveToEx(hdc, wklstartX + 50, wklstartY + 40, NULL);
+        LineTo(hdc, wklendX, wklendY);
+        // 세번째
+        wklstartX += 235;
+        wklstartY += 10;
+        wklendX += 188;
+        wklendY -= 31;
+        MoveToEx(hdc, wklstartX, wklstartY + 20, NULL);
+        LineTo(hdc, wklendX, wklendY + 20);
+        // 네번째
+        wklstartX;
+        wklstartY -= 10;
+        wklendX;
+        wklendY += 9;
+        MoveToEx(hdc, wklstartX, wklstartY + 30, NULL);
+        LineTo(hdc, wklendX, wklendY + 30);
+
+        DeleteObject(eyePen); 
+    }
+    else {
+        // 눈을 원으로 그리기
+        Ellipse(hdc, x - 84, y - 36, x - 100, y - 20);  // 왼쪽 눈 (왼쪽  x, 위쪽 y, 오른쪽 x, 아래쪽 y)
+        Ellipse(hdc, x + 84, y - 36, x + 100, y - 20);  // 오른쪽 눈
+        // 하얀색 눈
+        HBRUSH whiteEyes = CreateSolidBrush(RGB(255, 255, 255));
+        SelectObject(hdc, whiteEyes);
+        Ellipse(hdc, x - 95, y - 32, x - 88, y - 25);  // 왼쪽 눈 (왼쪽  x, 위쪽 y, 오른쪽 x, 아래쪽 y)
+        Ellipse(hdc, x + 95, y - 32, x + 88, y - 25);  // 오른쪽 눈
+        DeleteObject(whiteEyes);
+    }
 
     // 입
-    HBRUSH mouseBrush = CreateSolidBrush(RGB(255, 192, 203)); 
-    SelectObject(hdc, mouseBrush);
-    Ellipse(hdc, x+8 - 35, y+5, x + 28, y + 88);
+    HBRUSH mouthBrush = CreateSolidBrush(RGB(255, 192, 203));
+    SelectObject(hdc, mouthBrush);
+    Ellipse(hdc, x + 8 - 35, y + 5, x + 28, y + 88);
 
     // 하얀색 코
     HBRUSH noseBrush2 = CreateSolidBrush(RGB(255, 255, 255)); // 하얀색 원
     SelectObject(hdc, noseBrush2);
-    Ellipse(hdc, x -47, y , x + 3, y + 50); 
-    Ellipse(hdc, x , y, x + 50, y + 50);
+    Ellipse(hdc, x - 47, y, x + 3, y + 50);
+    Ellipse(hdc, x, y, x + 50, y + 50);
 
-    // 코 
+    // 코
     HBRUSH noseBrush = CreateSolidBrush(RGB(0, 0, 0));
     SelectObject(hdc, noseBrush);
-    Ellipse(hdc, x - 15, y - 13, x + 15, y + 18); // 코의 위치만 수정
+    Ellipse(hdc, x - 15, y - 13, x + 15, y + 18);
+
+    // 수염
+    HPEN hPen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0)); // 검은색 선
+    SelectObject(hdc, hPen);
+
+    int wklstartX = x - 50;
+    int wklendX = x + 50;
+    int wklstartY = y + 70;
+    int wklendY = y + 100;
+    // 첫번째 수염
+    wklstartX -= 80; // 시작점 x 좌표 이동
+    wklstartY -= 80; // 시작점 y 좌표 이동
+    wklendX -= 80;   // 끝점 x 좌표 이동
+    wklendY -= 80;   // 끝점 y 좌표 이동
+    MoveToEx(hdc, wklstartX + 50, wklstartY + 20, NULL);
+    LineTo(hdc, wklendX, wklendY);
+    // 두번째 수염
+    wklstartX += 0;
+    wklstartY += 10;
+    wklendX += 0;
+    wklendY += 10;
+    MoveToEx(hdc, wklstartX + 50, wklstartY + 40, NULL);
+    LineTo(hdc, wklendX, wklendY);
+    // 세번째 수염
+    wklstartX += 165;
+    wklstartY += 0;
+    wklendX += 117;
+    wklendY -= 40;
+    MoveToEx(hdc, wklstartX, wklstartY + 20, NULL);
+    LineTo(hdc, wklendX, wklendY + 20);
+    // 네번째 수염
+    wklstartX;
+    wklstartY;
+    wklendX;
+    wklendY += 18;
+    MoveToEx(hdc, wklstartX, wklstartY + 30, NULL);
+    LineTo(hdc, wklendX, wklendY + 30);
 
     DeleteObject(hBrush);
     DeleteObject(eyeBrush);
-    DeleteObject(mouseBrush);
+    DeleteObject(mouthBrush);
     DeleteObject(noseBrush2);
     DeleteObject(noseBrush);
+    DeleteObject(hPen);
 }
+
+
 
 
 
@@ -254,8 +362,8 @@ void ResizeButtons(HWND hWnd) {
     GetClientRect(hWnd, &rect);
 
     int buttonMargin = 8;
-    int buttonHeight = 64;
-    int buttonWidth = (rect.right - 2 * buttonMargin - (4 * 8)) / 5;
+    int buttonHeight = 55; // 버튼 높이
+    int buttonWidth = (rect.right - 2 * buttonMargin - (4 * 8)) / 5; // 버튼 넓이
 
     int innerBoxTop = rect.bottom - innerBoxHeight - innerBoxBottomMargin - 2 * 8;
     for (int i = 0; i < 5; i++) {
@@ -281,13 +389,13 @@ void ResizeButtons(HWND hWnd) {
 
         // 버튼 생성 및 위치 설정
         hButtons[i] = CreateWindow(
-            L"BUTTON", buttonName, WS_CHILD | WS_VISIBLE,
+            L"BUTTON", buttonName, WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
             0, 0, 100, 50, hWnd, (HMENU)(i + 1), hInstance, NULL
         );
 
-        int left = buttonMargin + i * (buttonWidth + buttonMargin);
+        int left = buttonMargin + i * (buttonWidth + buttonMargin)+8; // +8부분을 수정하면 오른쪽으로 이동가능
         int top = innerBoxTop - buttonHeight;
-        int right = left + buttonWidth;
+        int right = left + buttonWidth-15; // // 우측 버튼을 길이를 수정가능
         int bottom = top + buttonHeight;
 
         SetWindowPos(hButtons[i], NULL, left, top, right - left, bottom - top, SWP_NOZORDER);
@@ -327,25 +435,28 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         switch (LOWORD(wParam)) {
         case 1: // "사각형" 버튼을 눌렀을 때
             currentShapeType = 0;
+            SetFocus(hWnd); // 포커스를 윈도우로 설정
             // "사각형" 버튼을 누를 때 다른 도형 지우기
             shapes.clear();
             InvalidateRect(hWnd, NULL, FALSE);
             break;
         case 2: // "원" 버튼을 눌렀을 때
             currentShapeType = 1;
+            SetFocus(hWnd); // 포커스를 윈도우로 설정
             // "원" 버튼을 누를 때 다른 도형 지우기
             shapes.clear();
             InvalidateRect(hWnd, NULL, FALSE);
             break;
         case 3: // "보노보노" 버튼을 눌렀을 때
             currentShapeType = 2; // "보노보노" 모양을 나타내는 값
+            SetFocus(hWnd); // 포커스를 윈도우로 설정
             shapes.clear(); // 다른 도형을 지우기
             StopDrawing(); // 즉시 보노보노 추가
             InvalidateRect(hWnd, NULL, FALSE);
             break;
-
         case 4: // "라이언" 버튼을 눌렀을 때
             currentShapeType = 3;
+            SetFocus(hWnd); // 포커스를 윈도우로 설정
             // "라이언" 버튼을 누를 때 다른 도형 지우기
             shapes.clear();
             StopDrawing(); // 즉시 라이언 추가
@@ -353,6 +464,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             break;
         case 5: // "큐브" 버튼을 눌렀을 때
             currentShapeType = 4;
+            SetFocus(hWnd); // 포커스를 윈도우로 설정
             // "큐브" 버튼을 누를 때 다른 도형 지우기
             shapes.clear();
             StopDrawing(); // 즉시 큐브 추가
@@ -385,12 +497,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             }
         }
         break;
+        // 스페이스바 누를 때 감지
+    case WM_KEYDOWN:
+        if (wParam == VK_SPACE) {
+            drawEyesAsLines = true; // 눈을 선으로 그리도록 설정
+            InvalidateRect(hWnd, NULL, FALSE);
+        }
+        break;
+
+        // 스페이스바 놓을 때 감지
+    case WM_KEYUP:
+        if (wParam == VK_SPACE) {
+            drawEyesAsLines = false; // 눈을 선으로 그리지 않도록 설정
+            InvalidateRect(hWnd, NULL, FALSE);
+        }
+        break;
+
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
+
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
+
     return 0;
 }
 
