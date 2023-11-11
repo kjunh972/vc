@@ -89,29 +89,6 @@ void DrawCircle(HDC hdc, int centerX, int centerY, int radius) {
     DeleteObject(hPen);
 }
 
-// 스페이스바 상태를 확인하여 눈을 그리는 함수
-void DrawEye(HWND hWnd, HDC hdc, int x, int y, bool drawAsLine) {
-    int eyeWidth = 32; // 눈의 너비
-    int eyeHeight = 10; // 눈의 높이
-
-    // 왼쪽 눈 그리기
-    int leftEyeX = x - 50;
-    int leftEyeY = y - 36;
-    if (drawAsLine) {
-        HPEN eyeBrush = CreatePen(PS_SOLID, 2, RGB(0, 0, 0));
-        SelectObject(hdc, eyeBrush);
-        MoveToEx(hdc, leftEyeX, leftEyeY, NULL);
-        LineTo(hdc, leftEyeX + eyeWidth, leftEyeY);
-        DeleteObject(eyeBrush);
-    }
-    else {
-        HBRUSH eyeBrush = CreateSolidBrush(RGB(0, 0, 0));
-        SelectObject(hdc, eyeBrush);
-        Ellipse(hdc, leftEyeX, leftEyeY, leftEyeX + eyeWidth, leftEyeY + eyeHeight);
-        DeleteObject(eyeBrush);
-    }
-}
-
 // 보노보노 그리는 함수
 void DrawBonobono(HWND hWnd, HDC hdc, int x, int y) {
     int radius = 120;  // 전체 얼굴 크기
