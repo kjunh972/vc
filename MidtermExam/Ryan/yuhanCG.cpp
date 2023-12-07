@@ -31,121 +31,6 @@ void DrawShapes(HWND hWnd, HDC hdc) {
     }
 }
 
-void StartDrawing(int x, int y) {
-    startPoint.x = x;
-    startPoint.y = y;
-    endPoint.x = x;
-    endPoint.y = y;
-}
-
-void StartDrawingCircle(int x, int y) {
-    centerPoint.x = x;
-    centerPoint.y = y;
-    radius = 0;
-}
-
-void UpdateDrawing(int x, int y) {
-    endPoint.x = x;
-    endPoint.y = y;
-    InvalidateRect(NULL, NULL, FALSE);
-}
-
-void UpdateDrawingCircle(int x, int y) {
-    radius = max(abs(x - centerPoint.x), abs(y - centerPoint.y));
-    InvalidateRect(NULL, NULL, FALSE);
-}
-
-void StopDrawing() {
-    CustomShape newShape;
-    newShape.isDrawing = false;
-    newShape.shapeType = currentShapeType;
-    newShape.rect.left = min(startPoint.x, endPoint.x);
-    newShape.rect.top = min(startPoint.y, endPoint.y);
-    newShape.rect.right = max(startPoint.x, endPoint.x);
-    newShape.rect.bottom = max(startPoint.y, endPoint.y);
-
-    shapes.push_back(newShape);
-    InvalidateRect(NULL, NULL, FALSE);
-}
-
-void StopDrawingCircle() {
-    CustomShape newShape;
-    newShape.isDrawing = false;
-    newShape.shapeType = 1; // 원 타입을 나타내는 값을 정의 (다른 값과 겹치지 않도록)
-    newShape.rect.left = centerPoint.x - radius;
-    newShape.rect.top = centerPoint.y - radius;
-    newShape.rect.right = centerPoint.x + radius;
-    newShape.rect.bottom = centerPoint.y + radius;
-
-    shapes.push_back(newShape);
-    InvalidateRect(NULL, NULL, FALSE);
-}
-
-// 커스텀 마우스 커서 설정
-void SetCustomCursor(HWND hWnd, int cursorType) {
-    HCURSOR hCursor;
-    switch (cursorType) {
-    case 0:
-        hCursor = LoadCursor(NULL, IDC_ARROW);
-        break;
-    case 1:
-        hCursor = LoadCursor(NULL, IDC_CROSS);
-        break;
-    default:
-        hCursor = LoadCursor(NULL, IDC_ARROW);
-    }
-
-    if (hCursor) {
-        SetCursor(hCursor);
-    }
-}
-
-// 버튼 크기와 위치 조정
-void ResizeButtons(HWND hWnd) {
-    RECT rect;
-    GetClientRect(hWnd, &rect);
-
-    int buttonMargin = 8;
-    int buttonHeight = 55; // 버튼 높이
-    int buttonWidth = (rect.right - 2 * buttonMargin - (4 * 8)) / 5; // 버튼 넓이
-
-    int innerBoxTop = rect.bottom - innerBoxHeight - innerBoxBottomMargin - 2 * 8;
-    for (int i = 0; i < 5; i++) {
-        LPCWSTR buttonName = NULL;
-
-        switch (i) {
-        case 0:
-            buttonName = L"Box";
-            break;
-        case 1:
-            buttonName = L"Circle";
-            break;
-        case 2:
-            buttonName = L"Bonobono";
-            break;
-        case 3:
-            buttonName = L"Ryan";
-            break;
-        case 4:
-            buttonName = L"Cube";
-            break;
-        }
-
-        // 버튼 생성 및 위치 설정
-        hButtons[i] = CreateWindow(
-            L"BUTTON", buttonName, WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
-            0, 0, 100, 50, hWnd, (HMENU)(i + 1), hInstance, NULL
-        );
-
-        int left = buttonMargin + i * (buttonWidth + buttonMargin) + 8; // +8부분을 수정하면 오른쪽으로 이동가능
-        int top = innerBoxTop - buttonHeight;
-        int right = left + buttonWidth - 15; // // 우측 버튼을 길이를 수정가능
-        int bottom = top + buttonHeight;
-
-        SetWindowPos(hButtons[i], NULL, left, top, right - left, bottom - top, SWP_NOZORDER);
-    }
-}
-
 // 윈도우 프로시저 (메시지 처리)
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
@@ -218,7 +103,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             SetFocus(hWnd); // 포커스를 윈도우로 설정
             // "큐브" 버튼을 누를 때 다른 도형 지우기
             shapes.clear();
-            StopDrawing(); // 즉시 큐브 추가
             InvalidateRect(hWnd, NULL, FALSE);
             break;
         }
@@ -308,7 +192,7 @@ int CALLBACK WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, 
     // 윈도우 생성
     hWnd = CreateWindow(
         L"MainWindowClass",
-        L"Drawing App",
+        L"곰돌이",
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
         800, 480,

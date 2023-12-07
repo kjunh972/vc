@@ -42,6 +42,7 @@ void DrawBox(HWND hWnd, HDC hdc) {
     RECT rect;
     GetClientRect(hWnd, &rect);
 
+    int outerMargin = 8;
     int outerPadding = 8;
     int outerBoxHeight = rect.bottom - 2 * outerMargin;
 
@@ -66,16 +67,20 @@ void DrawBox(HWND hWnd, HDC hdc) {
     Rectangle(hdc, outerMargin, outerMargin, rect.right - outerMargin, rect.bottom - outerMargin);
     DeleteObject(hOuterBoxBrush);
 
-    // 내부 상자의 배경 브러시 생성 및 그리기
+    // 내부 상자의 배경 브러시 생성 및 그리기 
     HBRUSH hInnerBoxBrush = CreateSolidBrush(RGB(255, 255, 255));
     SelectObject(hdc, hInnerBoxBrush);
 
     int innerBoxTop = rect.bottom - innerBoxHeight - innerBoxBottomMargin - outerPadding;
-    int innerBoxBottom = innerBoxTop + innerBoxHeight + 8;
-    Rectangle(hdc, outerMargin + outerPaddingX, innerBoxTop, rect.right - outerMargin - outerPaddingX, innerBoxBottom);
+    int innerBoxBottom = innerBoxTop + innerBoxHeight + 2 * outerPadding;
+    Rectangle(hdc, outerMargin + outerPadding, innerBoxTop, rect.right - outerMargin - outerPadding, innerBoxBottom);
+
+    // 안쪽 상자 영역 내에서만 그림이 그려지도록 함
+    IntersectClipRect(hdc, outerMargin + outerPadding, innerBoxTop, rect.right - outerMargin - outerPadding, innerBoxBottom);
 
     DeleteObject(hInnerBoxBrush);
 }
+
 
 // 원을 그리는 함수
 void DrawCircle(HDC hdc, int centerX, int centerY, int radius) {
@@ -91,7 +96,119 @@ void DrawCircle(HDC hdc, int centerX, int centerY, int radius) {
     DeleteObject(hPen);
 }
 
+void StartDrawing(int x, int y) {
+    startPoint.x = x;
+    startPoint.y = y;
+    endPoint.x = x;
+    endPoint.y = y;
+}
 
+void StartDrawingCircle(int x, int y) {
+    centerPoint.x = x;
+    centerPoint.y = y;
+    radius = 0;
+}
+
+void UpdateDrawing(int x, int y) {
+    endPoint.x = x;
+    endPoint.y = y;
+    InvalidateRect(NULL, NULL, FALSE);
+}
+
+void UpdateDrawingCircle(int x, int y) {
+    radius = max(abs(x - centerPoint.x), abs(y - centerPoint.y));
+    InvalidateRect(NULL, NULL, FALSE);
+}
+
+void StopDrawing() {
+    CustomShape newShape;
+    newShape.isDrawing = false;
+    newShape.shapeType = currentShapeType;
+    newShape.rect.left = min(startPoint.x, endPoint.x);
+    newShape.rect.top = min(startPoint.y, endPoint.y);
+    newShape.rect.right = max(startPoint.x, endPoint.x);
+    newShape.rect.bottom = max(startPoint.y, endPoint.y);
+
+    shapes.push_back(newShape);
+    InvalidateRect(NULL, NULL, FALSE);
+}
+
+void StopDrawingCircle() {
+    CustomShape newShape;
+    newShape.isDrawing = false;
+    newShape.shapeType = 1; // 원 타입을 나타내는 값을 정의 (다른 값과 겹치지 않도록)
+    newShape.rect.left = centerPoint.x - radius;
+    newShape.rect.top = centerPoint.y - radius;
+    newShape.rect.right = centerPoint.x + radius;
+    newShape.rect.bottom = centerPoint.y + radius;
+
+    shapes.push_back(newShape);
+    InvalidateRect(NULL, NULL, FALSE);
+}
+
+// 커스텀 마우스 커서 설정
+void SetCustomCursor(HWND hWnd, int cursorType) {
+    HCURSOR hCursor;
+    switch (cursorType) {
+    case 0:
+        hCursor = LoadCursor(NULL, IDC_ARROW);
+        break;
+    case 1:
+        hCursor = LoadCursor(NULL, IDC_CROSS);
+        break;
+    default:
+        hCursor = LoadCursor(NULL, IDC_ARROW);
+    }
+
+    if (hCursor) {
+        SetCursor(hCursor);
+    }
+}
+
+void ResizeButtons(HWND hWnd) {
+    RECT rect;
+    GetClientRect(hWnd, &rect);
+
+    int buttonMargin = 8;
+    int buttonHeight = 55; // 버튼 높이
+    int buttonWidth = (rect.right - 2 * buttonMargin - (4 * 8)) / 5; // 버튼 넓이
+
+    int innerBoxTop = rect.bottom - innerBoxHeight - innerBoxBottomMargin - 2 * 8;
+    for (int i = 0; i < 5; i++) {
+        LPCWSTR buttonName = NULL;
+
+        switch (i) {
+        case 0:
+            buttonName = L"Box";
+            break;
+        case 1:
+            buttonName = L"Circle";
+            break;
+        case 2:
+            buttonName = L"Bonobono";
+            break;
+        case 3:
+            buttonName = L"Ryan";
+            break;
+        case 4:
+            buttonName = L"Cube";
+            break;
+        }
+
+        // 버튼 생성 및 위치 설정
+        hButtons[i] = CreateWindow(
+            L"BUTTON", buttonName, WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
+            0, 0, 100, 50, hWnd, (HMENU)(i + 1), hInstance, NULL
+        );
+
+        int left = buttonMargin + i * (buttonWidth + buttonMargin) + 8; // +8부분을 수정하면 오른쪽으로 이동가능
+        int top = innerBoxTop - buttonHeight;
+        int right = left + buttonWidth - 16; // // 우측 버튼을 길이를 수정가능
+        int bottom = top + buttonHeight;
+
+        SetWindowPos(hButtons[i], NULL, left, top, right - left, bottom - top, SWP_NOZORDER);
+    }
+}
 
 void DrawBonobono(HWND hWnd, HDC hdc, int blink) {
     int radius = 120;  // 전체 얼굴 크기
@@ -106,7 +223,7 @@ void DrawBonobono(HWND hWnd, HDC hdc, int blink) {
     int x = centerX;
     int y = centerY;
 
-    HBRUSH hBrush = CreateSolidBrush(RGB(80, 188, 223));
+    HBRUSH hBrush = CreateSolidBrush(RGB(127, 200, 255));
     SelectObject(hdc, hBrush);
     Ellipse(hdc, x - radius, y - radius, x + radius, y + radius);
 
@@ -166,7 +283,7 @@ void DrawBonobono(HWND hWnd, HDC hdc, int blink) {
     }
 
     // 입
-    HBRUSH mouthBrush = CreateSolidBrush(RGB(255, 192, 203));
+    HBRUSH mouthBrush = CreateSolidBrush(RGB(255, 150, 255));
     SelectObject(hdc, mouthBrush);
     Ellipse(hdc, x + 8 - 35, y + 5, x + 28, y + 88);
 
@@ -231,9 +348,9 @@ void DrawRyan(HWND hWnd, HDC hdc, int left, int top, int right, int bottom) {
     int lenX = right - left;
     int lenY = bottom - top;
 
-    // 귀 그리기 (타원)
+    // 귀 그리기
     int earsRadius = lenX / 10; // 귀 크기 조절
-    HBRUSH earsBrush = CreateSolidBrush(RGB(255, 196, 63));
+    HBRUSH earsBrush = CreateSolidBrush(RGB(255, 200, 15));
     SelectObject(hdc, earsBrush);
 
     // 귀 위치 계산
@@ -248,8 +365,7 @@ void DrawRyan(HWND hWnd, HDC hdc, int left, int top, int right, int bottom) {
     DeleteObject(earsBrush);
 
     // 머리 그리기 (타원)
-    HBRUSH headBrush = CreateSolidBrush(RGB(255, 196, 63)); // 연한 갈색
-    SelectObject(hdc, headBrush);
+    HBRUSH headBrush = CreateSolidBrush(RGB(255, 200, 15));
     Ellipse(hdc, left, top, right, bottom);
     DeleteObject(headBrush);
 
@@ -269,12 +385,12 @@ void DrawRyan(HWND hWnd, HDC hdc, int left, int top, int right, int bottom) {
 
     DeleteObject(eyeBrush);
 
-    // 흰코 그리기 (타원)
+    // 흰코 그리기 
     int wNoseRadius = lenX / 19; // 흰코 크기 조절
     HBRUSH wNoseBrush = CreateSolidBrush(RGB(255, 255, 255));
     SelectObject(hdc, wNoseBrush);
 
-    // 흰코 위치 계산 (드래그로 인한 변화 반영)
+    // 흰코 위치 계산 
     int wNose1X = left + lenX / 4 * 1.83;
     int wNose1Y = top + lenY / 4 * 2.3;
     int wNose2X = right - lenX / 4 * 1.83;
@@ -315,7 +431,7 @@ void DrawRyan(HWND hWnd, HDC hdc, int left, int top, int right, int bottom) {
     int eyebrowY5 = bottom - lenY / 4 * 2.84;
     int eyebrowY6 = bottom - lenY / 4 * 2.84;
 
-    // 눈썹 길이 계산 (예: lenX를 이용하여 조절)
+    // 눈썹 길이 계산 
     int eyebrowLength = (lenX / 10) / 2;
 
     MoveToEx(hdc, eyebrowX1 - eyebrowLength, eyebrowY1, NULL);
