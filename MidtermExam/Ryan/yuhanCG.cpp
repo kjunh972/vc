@@ -1,94 +1,4 @@
 #include "yuhanCG.h"
-#include <windows.h> // Windows API 헤더 파일
-#include <vector>
-#include <tchar.h> // TCHAR와 관련된 헤더 파일
-#include <cmath> // 수학 함수 헤더 파일
-
-// 사용자 지정 도형 구조체
-struct CustomShape {
-    RECT rect;      // 도형의 위치와 크기
-    bool isDrawing; // 현재 그리는 중인지 여부
-    int shapeType;  // 도형의 타입 (0: 사각형, 1: 원, 2: 보노보노, 3: 라이언, 4: 큐브)
-};
-
-int currentShapeType = 0; // 현재 그릴 도형 타입
-int blink = 0; // 눈을 선으로 그릴지 여부
-
-std::vector<CustomShape> shapes; // 그린 도형을 저장할 벡터
-
-bool isBoxVisible = true; // 사각형이 보이는지 여부
-HWND hButtons[5]; // 5개의 버튼 윈도우 핸들을 저장하는 배열
-
-int innerBoxHeight = 338; // 내부 상자의 높이
-int innerBoxTopMargin = 16; // 내부 상자 상단 여백
-int innerBoxBottomMargin = 16; // 내부 상자 하단 여백
-
-bool isMouseInsideInnerBox = false; // 마우스가 내부 상자 안에 있는지 여부를 나타내는 플래그
-
-int outerMargin = 8; // 외부 여백
-int outerPaddingX = 8; // 외부 상자의 가로 패딩
-
-HINSTANCE hInstance; // 현재 인스턴스
-
-
-POINT centerPoint; // 원의 중심
-int radius;        // 원의 반지름
-
-// 내부 상자를 그리는 함수
-void DrawBox(HWND hWnd, HDC hdc) {
-    RECT rect;
-    GetClientRect(hWnd, &rect);
-
-    int outerPadding = 8;
-    int outerBoxHeight = rect.bottom - 2 * outerMargin;
-
-    // 내부 상자의 높이가 제한을 초과하지 않도록
-    if (innerBoxHeight > (outerBoxHeight - innerBoxTopMargin - innerBoxBottomMargin - 2 * outerPadding))
-        innerBoxHeight = outerBoxHeight - innerBoxTopMargin - innerBoxBottomMargin - 2 * outerPadding;
-
-    int innerMargin = 0;
-    int innerPadding = 0;
-
-    // 배경 브러시 생성 및 설정
-    HBRUSH hBackgroundBrush = CreateSolidBrush(RGB(255, 240, 200));
-    SelectObject(hdc, hBackgroundBrush);
-    RECT clientRect;
-    GetClientRect(hWnd, &clientRect);
-    FillRect(hdc, &clientRect, hBackgroundBrush);
-    DeleteObject(hBackgroundBrush);
-
-    // 외부 상자의 배경 브러시 생성 및 그리기
-    HBRUSH hOuterBoxBrush = CreateSolidBrush(RGB(255, 240, 200));
-    SelectObject(hdc, hOuterBoxBrush);
-    Rectangle(hdc, outerMargin, outerMargin, rect.right - outerMargin, rect.bottom - outerMargin);
-    DeleteObject(hOuterBoxBrush);
-
-    // 내부 상자의 배경 브러시 생성 및 그리기
-    HBRUSH hInnerBoxBrush = CreateSolidBrush(RGB(255, 255, 255));
-    SelectObject(hdc, hInnerBoxBrush);
-
-    int innerBoxTop = rect.bottom - innerBoxHeight - innerBoxBottomMargin - outerPadding;
-    int innerBoxBottom = innerBoxTop + innerBoxHeight + 8;
-    Rectangle(hdc, outerMargin + outerPaddingX, innerBoxTop, rect.right - outerMargin - outerPaddingX, innerBoxBottom);
-
-    DeleteObject(hInnerBoxBrush);
-}
-
-// 원을 그리는 함수
-void DrawCircle(HDC hdc, int centerX, int centerY, int radius) {
-    HBRUSH circleBrush = CreateSolidBrush(RGB(0, 255, 0)); // 녹색으로 내부 채우기
-    SelectObject(hdc, circleBrush);
-    Ellipse(hdc, centerX - radius, centerY - radius, centerX + radius, centerY + radius);
-    DeleteObject(circleBrush);
-
-    // 원 그리기 (윤곽선)
-    HPEN hPen = CreatePen(PS_SOLID, 2, RGB(255, 0, 0)); // 빨간색 윤곽선
-    SelectObject(hdc, hPen);
-    Ellipse(hdc, centerX - radius, centerY - radius, centerX + radius, centerY + radius);
-    DeleteObject(hPen);
-}
-
-
 
 void DrawShapes(HWND hWnd, HDC hdc) {
     for (size_t i = 0; i < shapes.size(); i++) {
@@ -112,7 +22,7 @@ void DrawShapes(HWND hWnd, HDC hdc) {
             DrawRyan(hWnd, hdc, shapes[i].rect.left, shapes[i].rect.top, shapes[i].rect.right, shapes[i].rect.bottom);
         }
         else if (shapes[i].shapeType == 4) { // "큐브" 모양 그리기 처리
-            // 여기에서 큐브를 그립니다.
+            DrawCube(hdc, shapes[i].rect.left, shapes[i].rect.top, shapes[i].rect.right, shapes[i].rect.bottom);
         }
 
         if (hBrush != NULL) { // hBrush가 NULL이 아닌 경우에만 사용
@@ -318,7 +228,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps); // 'hdc' 초기화
         DrawBox(hWnd, hdc); // 바깥쪽 상자와 안쪽 상자 그리기
-        DrawShapes(hWnd, hdc); // 도형 그리
+        DrawShapes(hWnd, hdc); // 도형 그리기
 
         EndPaint(hWnd, &ps);
         break;
